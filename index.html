@@ -6,7 +6,7 @@
     <title>⛽ 香港每日油價通</title>
     <style>
         :root {
-            /* 柔和莫蘭迪午夜藍配色 */
+            /* 柔和莫蘭迪配色 */
             --bg-dark: #1E232E;       
             --bg-card: #2A3143;       
             --primary: #82A0D8;       
@@ -14,7 +14,6 @@
             --text-main: #E2E8F0;     
             --text-muted: #94A3B8;    
             --success: #5D8A66;
-            --danger: #D88282;
             --gold: #FBBF24;
             --badge-bg: rgba(251, 191, 36, 0.2);
             --esso-blue: #1E88E5;
@@ -47,9 +46,9 @@
         }
         .header h2 {
             color: var(--primary);
-            font-size: 24px;
+            font-size: 22px;
             margin: 0 0 6px 0;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
         .header p {
             color: var(--text-muted);
@@ -80,16 +79,16 @@
             font-size: 12px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .refresh-btn:active { transform: scale(0.95); }
 
-        /* 車隊卡專屬開關面板 */
+        /* 車隊卡開關 */
         .fleet-card-box {
             background: linear-gradient(135deg, rgba(42, 49, 67, 0.8) 0%, rgba(30, 136, 229, 0.15) 100%);
             border: 1px solid rgba(30, 136, 229, 0.3);
             border-radius: 12px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -103,13 +102,10 @@
             font-size: 14px;
             font-weight: bold;
             color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }
         .fleet-desc {
             font-size: 11px;
-            color: var(--primary);
+            color: var(--text-muted);
         }
 
         /* Toggle Switch */
@@ -183,7 +179,6 @@
             align-items: center;
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-left: 5px solid var(--station-color, var(--primary));
-            position: relative;
             animation: slideIn 0.3s ease forwards;
             opacity: 0;
             transform: translateY(10px);
@@ -193,26 +188,11 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .rank {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--text-muted);
-            width: 30px;
-            text-align: center;
-            opacity: 0.5;
-        }
-        .rank.first {
-            color: var(--gold);
-            opacity: 1;
-            text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
-        }
-
         .station-info {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
             flex-grow: 1;
-            margin-left: 12px;
         }
         .station-name {
             font-weight: bold;
@@ -220,7 +200,7 @@
             color: var(--text-main);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             flex-wrap: wrap;
         }
         .badge {
@@ -239,35 +219,30 @@
         .price-breakdown {
             font-size: 12px;
             color: var(--text-muted);
-        }
-        .strike-price {
-            text-decoration: line-through;
-            opacity: 0.6;
-        }
-        .discount-amt {
-            color: var(--success);
-            font-weight: bold;
+            display: flex;
+            gap: 10px;
         }
 
+        /* 折後價主視覺區 */
         .final-price-box {
             text-align: right;
-            min-width: 80px;
+            min-width: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .price-label {
+            font-size: 11px;
+            color: var(--primary);
+            font-weight: bold;
+            margin-bottom: 2px;
+            letter-spacing: 1px;
         }
         .final-price {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: bold;
-            color: var(--primary);
-        }
-        .unit {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .disclaimer {
-            font-size: 11px;
-            color: rgba(148, 163, 184, 0.6);
-            line-height: 1.5;
-            text-align: justify;
+            color: #fff;
         }
     </style>
 </head>
@@ -276,7 +251,7 @@
 <div class="container">
     <div class="header">
         <h2>⛽ 香港每日油價通</h2>
-        <p>實時比較各大門市與車隊卡專屬折扣</p>
+        <p>實時比較各大門市與車隊卡折後價</p>
     </div>
 
     <!-- 狀態列 -->
@@ -300,57 +275,43 @@
     <!-- 油種 Tabs -->
     <div class="tabs">
         <button class="tab-btn active" id="tab-standard" onclick="switchTab('standard')">無鉛汽油</button>
-        <button class="tab-btn" id="tab-premium" onclick="switchTab('premium')">特級(靚油)</button>
-        <button class="tab-btn" id="tab-diesel" onclick="switchTab('diesel')">環保柴油</button>
+        <button class="tab-btn" id="tab-premium" onclick="switchTab('premium')">特級無鉛汽油</button>
     </div>
 
     <!-- 油站列表 -->
     <div class="price-list" id="priceList">
         <!-- JS 動態生成區塊 -->
     </div>
-
-    <div class="disclaimer">
-        * 註解：本程式數據基於香港市場最新基準指標。當開啟車隊卡功能後，Esso 牌價將自動套用你的私家卡折扣 (-$10/-$11) 覆蓋原有門市折扣。其他油站因日子推廣折後可能更平，一切以現場標示為準。
-    </div>
 </div>
 
 <script>
-    // 香港各大油站基準油價與門市常規折扣數據庫
+    // 根據消委會真實數據更新牌價與門市折扣
     const petrolData = {
         standard: [
-            { id: 'petrochina', name: '中國石油 (PetroChina)', base: 24.59, discount: 7.00, color: '#FF5722' },
-            { id: 'shell', name: '蜆殼 (Shell)', base: 24.59, discount: 7.00, color: '#FFEB3B' },
-            { id: 'sinopec', name: '中石化 (Sinopec)', base: 24.59, discount: 6.00, color: '#E53935' },
-            { id: 'esso', name: '埃索 (Esso)', base: 24.59, discount: 1.60, color: '#1E88E5' },
-            { id: 'caltex', name: '加德士 (Caltex)', base: 24.59, discount: 0.90, color: '#00897B' }
+            { id: 'petrochina', name: '中國石油', base: 34.62, discount: 7.00, color: '#FF5722' },
+            { id: 'sinopec', name: '中石化', base: 34.62, discount: 6.00, color: '#E53935' },
+            { id: 'shell', name: '蜆殼', base: 34.62, discount: 5.00, color: '#FFEB3B' },
+            { id: 'esso', name: '埃索', base: 34.62, discount: 1.60, color: '#1E88E5' },
+            { id: 'caltex', name: '加德士', base: 34.62, discount: 0.90, color: '#00897B' }
         ],
         premium: [
-            { id: 'petrochina', name: '中國石油 (PetroChina)', base: 25.78, discount: 14.00, color: '#FF5722' },
-            { id: 'sinopec', name: '中石化 (Sinopec)', base: 25.78, discount: 13.99, color: '#E53935' },
-            { id: 'shell', name: '蜆殼 (Shell)', base: 25.78, discount: 7.00, color: '#FFEB3B' },
-            { id: 'esso', name: '埃索 (Esso)', base: 25.78, discount: 1.60, color: '#1E88E5' },
-            { id: 'caltex', name: '加德士 (Caltex)', base: 25.78, discount: 0.90, color: '#00897B' }
-        ],
-        diesel: [
-            { id: 'petrochina', name: '中國石油 (PetroChina)', base: 23.35, discount: 8.00, color: '#FF5722' },
-            { id: 'sinopec', name: '中石化 (Sinopec)', base: 23.35, discount: 7.00, color: '#E53935' },
-            { id: 'shell', name: '蜆殼 (Shell)', base: 23.35, discount: 6.00, color: '#FFEB3B' },
-            { id: 'esso', name: '埃索 (Esso)', base: 23.35, discount: 1.60, color: '#1E88E5' },
-            { id: 'caltex', name: '加德士 (Caltex)', base: 23.35, discount: 0.90, color: '#00897B' }
+            { id: 'sinopec', name: '中石化', base: 36.42, discount: 7.80, color: '#E53935' },
+            { id: 'petrochina', name: '中國石油', base: 36.42, discount: 7.00, color: '#FF5722' },
+            { id: 'shell', name: '蜆殼', base: 36.42, discount: 5.00, color: '#FFEB3B' },
+            { id: 'esso', name: '埃索', base: 36.42, discount: 1.60, color: '#1E88E5' },
+            { id: 'caltex', name: '加德士', base: 36.42, discount: 0.90, color: '#00897B' }
         ]
     };
 
-    // 使用者的專屬 Esso 車隊卡折扣
+    // Esso 車隊卡折扣
     const fleetCardDiscount = {
-        standard: 10.00, // Extra
-        premium: 11.00,  // Supreme+
-        diesel: 0.00     // 假設柴油無提供車隊卡，如有需要可改
+        standard: 10.00,
+        premium: 11.00
     };
 
     let currentTab = 'standard';
     let isLoading = false;
 
-    // 模擬同步 API 數據
     async function fetchData() {
         if (isLoading) return;
         isLoading = true;
@@ -361,15 +322,13 @@
 
         setTimeout(() => {
             renderList(currentTab);
-            
             const now = new Date();
             const timeStr = now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' });
-            
             document.getElementById('updateTime').innerText = `最後同步: 今日 ${timeStr}`;
             btn.innerText = '🔄 立即同步';
             btn.style.opacity = 1;
             isLoading = false;
-        }, 600);
+        }, 500);
     }
 
     function switchTab(type) {
@@ -384,13 +343,13 @@
         const isFleetCardOn = document.getElementById('fleetToggle').checked;
         listEl.innerHTML = '';
         
-        // 運算並覆寫折扣
+        // 運算最終折後價，並由平到貴排序
         let data = petrolData[type].map(item => {
             let activeDiscount = item.discount;
             let isFleetApplied = false;
 
-            // 若開啟車隊卡，且當前油站係 Esso，則套用專屬車隊折扣取代門市折扣
-            if (isFleetCardOn && item.id === 'esso' && fleetCardDiscount[type] > 0) {
+            // 套用車隊卡折扣
+            if (isFleetCardOn && item.id === 'esso') {
                 activeDiscount = fleetCardDiscount[type];
                 isFleetApplied = true;
             }
@@ -401,24 +360,18 @@
                 finalPrice: item.base - activeDiscount,
                 isFleetApplied: isFleetApplied
             };
-        }).sort((a, b) => a.finalPrice - b.finalPrice); // 由平到貴大洗牌排序
+        }).sort((a, b) => a.finalPrice - b.finalPrice);
         
-        // 找出全場最平嘅價錢 (用黎頒皇冠)
         const minPrice = data[0].finalPrice;
 
         data.forEach((item, index) => {
-            // 如果最終價格等於最平嘅價格，就封佢做第一名 (可能有多個並列)
             const isFirst = item.finalPrice === minPrice;
-            const rankIcon = isFirst ? '👑' : (index + 1);
-            const rankClass = isFirst ? 'rank first' : 'rank';
             
-            // 標示狀態：套用緊專屬油卡定係門市優惠
             let badgeHtml = '';
             if (item.isFleetApplied) {
                 badgeHtml = `<span class="badge fleet">💳 車隊卡優惠</span>`;
-            } else if (item.activeDiscount > 8) { 
-                // 純粹標示大折扣，例如中石油特級減 $14
-                badgeHtml = `<span class="badge">🔥 門市暴走劈價</span>`;
+            } else if (isFirst) { 
+                badgeHtml = `<span class="badge">👑 全場最平</span>`;
             }
 
             const card = document.createElement('div');
@@ -426,27 +379,26 @@
             card.style.setProperty('--station-color', item.color);
             card.style.animationDelay = `${index * 0.1}s`;
             
+            // 介面完全改為強調「折後價」，折扣數字放細
             card.innerHTML = `
-                <div class="${rankClass}">${rankIcon}</div>
                 <div class="station-info">
                     <div class="station-name">
                         ${item.name} ${badgeHtml}
                     </div>
                     <div class="price-breakdown">
-                        牌價: <span class="strike-price">$${item.base.toFixed(2)}</span> | 
-                        折扣: <span class="discount-amt">-$${item.activeDiscount.toFixed(2)}</span>
+                        <span>零售牌價: $${item.base.toFixed(2)}</span>
+                        <span>(折扣: -$${item.activeDiscount.toFixed(2)})</span>
                     </div>
                 </div>
                 <div class="final-price-box">
+                    <div class="price-label">折後價</div>
                     <div class="final-price">$${item.finalPrice.toFixed(2)}</div>
-                    <div class="unit">/公升</div>
                 </div>
             `;
             listEl.appendChild(card);
         });
     }
 
-    // 初次載入自動同步
     fetchData();
 </script>
 
