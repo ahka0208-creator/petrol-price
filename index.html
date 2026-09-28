@@ -17,6 +17,8 @@
             --gold: #FBBF24;
             --badge-bg: rgba(251, 191, 36, 0.2);
             --esso-blue: #1E88E5;
+            --shell-yellow: #FFEB3B;
+            --shell-red: #D32F2F;
         }
 
         body {
@@ -83,16 +85,31 @@
         }
         .refresh-btn:active { transform: scale(0.95); }
 
-        /* 車隊卡開關 */
-        .fleet-card-box {
-            background: linear-gradient(135deg, rgba(42, 49, 67, 0.8) 0%, rgba(30, 136, 229, 0.15) 100%);
-            border: 1px solid rgba(30, 136, 229, 0.3);
+        /* 車隊卡控制面板 */
+        .fleet-panel {
+            background: var(--bg-card);
             border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+        .fleet-card-box {
             padding: 14px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
+        .fleet-card-box:last-child { border-bottom: none; }
+        
+        .fleet-card-box.esso {
+            background: linear-gradient(90deg, rgba(30, 136, 229, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--esso-blue);
+        }
+        .fleet-card-box.shell {
+            background: linear-gradient(90deg, rgba(255, 235, 59, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--shell-yellow);
+        }
+
         .fleet-info {
             display: flex;
             flex-direction: column;
@@ -133,7 +150,9 @@
             transition: .3s;
             border-radius: 50%;
         }
-        input:checked + .slider { background-color: var(--esso-blue); }
+        input:checked + .slider.esso-slider { background-color: var(--esso-blue); }
+        input:checked + .slider.shell-slider { background-color: var(--shell-yellow); }
+        input:checked + .slider.shell-slider:before { background-color: var(--shell-red); }
         input:checked + .slider:before { transform: translateX(20px); }
 
         /* 分類 Tabs */
@@ -226,9 +245,14 @@
             border-radius: 4px;
             font-weight: bold;
         }
-        .badge.fleet {
+        .badge.fleet-esso {
             background: rgba(30, 136, 229, 0.2);
             color: #60A5FA;
+        }
+        .badge.fleet-shell {
+            background: rgba(255, 235, 59, 0.15);
+            color: #FDE047;
+            border: 1px solid rgba(255, 235, 59, 0.3);
         }
         .badge.upgrade {
             background: rgba(239, 68, 68, 0.15);
@@ -270,7 +294,7 @@
 <div class="container">
     <div class="header">
         <h2>⛽ 香港每日油價通</h2>
-        <p>實時比較各大門市與車隊卡折後價</p>
+        <p>實時比較各大門市與多張車隊卡折後價</p>
     </div>
 
     <!-- 狀態列 -->
@@ -279,16 +303,30 @@
         <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">🔄 立即同步</button>
     </div>
 
-    <!-- 車隊卡開關 -->
-    <div class="fleet-card-box">
-        <div class="fleet-info">
-            <div class="fleet-title">💳 啟用專屬 Esso 車隊卡</div>
-            <div class="fleet-desc">Extra 減 $10 | Supreme+ 減 $11 (連免費升級)</div>
+    <!-- 車隊卡控制面板 -->
+    <div class="fleet-panel">
+        <!-- Esso 卡 -->
+        <div class="fleet-card-box esso">
+            <div class="fleet-info">
+                <div class="fleet-title">💳 啟用 Esso 車隊卡</div>
+                <div class="fleet-desc">Extra 減 $10 | Supreme+ 減 $11 (連免費升級)</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="essoToggle" onchange="renderList(currentTab)" checked>
+                <span class="slider esso-slider"></span>
+            </label>
         </div>
-        <label class="switch">
-            <input type="checkbox" id="fleetToggle" onchange="renderList(currentTab)" checked>
-            <span class="slider"></span>
-        </label>
+        <!-- Shell 卡 -->
+        <div class="fleet-card-box shell">
+            <div class="fleet-info">
+                <div class="fleet-title">💳 啟用 Shell 車隊卡</div>
+                <div class="fleet-desc">全線汽油每升即減 $10.7</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="shellToggle" onchange="renderList(currentTab)" checked>
+                <span class="slider shell-slider"></span>
+            </label>
+        </div>
     </div>
 
     <!-- 油種 Tabs -->
@@ -322,10 +360,10 @@
         ]
     };
 
-    // Esso 車隊卡專屬折扣額
+    // 車隊卡專屬折扣額
     const fleetCardDiscount = {
-        standard: 10.00,
-        premium: 11.00
+        esso: { standard: 10.00, premium: 11.00 },
+        shell: { standard: 10.70, premium: 10.70 } // 根據圖片顯示，全部汽油減 $10.7
     };
 
     let currentTab = 'standard';
@@ -359,28 +397,35 @@
     function renderList(type) {
         currentTab = type;
         const listEl = document.getElementById('priceList');
-        const isFleetCardOn = document.getElementById('fleetToggle').checked;
+        const isEssoOn = document.getElementById('essoToggle').checked;
+        const isShellOn = document.getElementById('shellToggle').checked;
         listEl.innerHTML = '';
         
         // 運算最終折後價
         let data = petrolData[type].map(item => {
             let activeBase = item.base;
             let activeDiscount = item.discount;
-            let isFleetApplied = false;
+            let fleetApplied = null; // 'esso' 或 'shell'
             let isFreeUpgrade = false;
 
-            // 如果開啟車隊卡，且當前油站為 Esso
-            if (isFleetCardOn && item.id === 'esso') {
-                activeDiscount = fleetCardDiscount[type];
-                isFleetApplied = true;
-
-                // 核心改動：免費升級邏輯 (特級汽油，但用無鉛牌價計)
+            // 處理 Esso 車隊卡邏輯
+            if (isEssoOn && item.id === 'esso') {
+                activeDiscount = fleetCardDiscount.esso[type];
+                fleetApplied = 'esso';
+                
+                // 特級汽油免費升級邏輯
                 if (type === 'premium') {
-                    // 找出標準無鉛汽油嘅牌價 ($34.62)
                     const standardEssoBase = petrolData.standard.find(p => p.id === 'esso').base;
                     activeBase = standardEssoBase; 
                     isFreeUpgrade = true;
                 }
+            }
+
+            // 處理 Shell 車隊卡邏輯
+            if (isShellOn && item.id === 'shell') {
+                activeDiscount = fleetCardDiscount.shell[type];
+                fleetApplied = 'shell';
+                // 註：圖片中未提及 Shell 特級有免費升級，故按原牌價計算
             }
 
             return {
@@ -388,7 +433,7 @@
                 activeBase: activeBase,
                 activeDiscount: activeDiscount,
                 finalPrice: activeBase - activeDiscount,
-                isFleetApplied: isFleetApplied,
+                fleetApplied: fleetApplied,
                 isFreeUpgrade: isFreeUpgrade
             };
         }).sort((a, b) => a.finalPrice - b.finalPrice); // 由平到貴排序
@@ -401,7 +446,13 @@
             // 處理各種徽章 (Badges)
             let badges = [];
             if (isFirst) badges.push(`<span class="badge">👑 全場最平</span>`);
-            if (item.isFleetApplied) badges.push(`<span class="badge fleet">💳 車隊卡優惠</span>`);
+            
+            if (item.fleetApplied === 'esso') {
+                badges.push(`<span class="badge fleet-esso">💳 Esso卡優惠</span>`);
+            } else if (item.fleetApplied === 'shell') {
+                badges.push(`<span class="badge fleet-shell">💳 Shell卡優惠</span>`);
+            }
+            
             if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級牌價計法</span>`);
             
             const badgeHtml = badges.length > 0 ? `<div class="badge-row">${badges.join('')}</div>` : '';
