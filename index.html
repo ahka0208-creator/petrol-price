@@ -32,6 +32,7 @@
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
+            padding-bottom: 180px; /* 預留空間俾置底計算機 */
         }
 
         .container {
@@ -186,7 +187,6 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            padding-bottom: 20px;
         }
 
         .card {
@@ -287,6 +287,103 @@
             font-weight: bold;
             color: #fff;
         }
+
+        /* 實時計算機 (懸浮置底) */
+        .calculator-card {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 420px;
+            background: linear-gradient(145deg, #2A3143 0%, #1E232E 100%);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid rgba(130, 160, 216, 0.3);
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.4);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-sizing: border-box;
+        }
+
+        .calc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .calc-header h3 {
+            margin: 0;
+            font-size: 15px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .calc-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        select.calc-select {
+            flex: 1;
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        input.calc-input {
+            width: 80px;
+            background: rgba(0,0,0,0.2);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            text-align: center;
+        }
+
+        .quick-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .quick-btns button {
+            flex: 1;
+            background: rgba(130, 160, 216, 0.15);
+            color: var(--text-main);
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .quick-btns button:active { background: var(--primary); color: #000; }
+
+        .calc-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+            padding-top: 10px;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+        }
+        .calc-result span {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .calc-result strong {
+            font-size: 22px;
+            color: var(--gold);
+        }
     </style>
 </head>
 <body>
@@ -297,15 +394,12 @@
         <p>實時比較各大門市與多張車隊卡折後價</p>
     </div>
 
-    <!-- 狀態列 -->
     <div class="status-bar">
         <span class="update-time" id="updateTime">最後更新: 載入中...</span>
         <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">🔄 立即同步</button>
     </div>
 
-    <!-- 車隊卡控制面板 -->
     <div class="fleet-panel">
-        <!-- Esso 卡 -->
         <div class="fleet-card-box esso">
             <div class="fleet-info">
                 <div class="fleet-title">💳 啟用 Esso 車隊卡</div>
@@ -316,7 +410,6 @@
                 <span class="slider esso-slider"></span>
             </label>
         </div>
-        <!-- Shell 卡 -->
         <div class="fleet-card-box shell">
             <div class="fleet-info">
                 <div class="fleet-title">💳 啟用 Shell 車隊卡</div>
@@ -329,15 +422,33 @@
         </div>
     </div>
 
-    <!-- 油種 Tabs -->
     <div class="tabs">
         <button class="tab-btn active" id="tab-standard" onclick="switchTab('standard')">無鉛汽油</button>
         <button class="tab-btn" id="tab-premium" onclick="switchTab('premium')">特級無鉛汽油</button>
     </div>
 
-    <!-- 油站列表 -->
     <div class="price-list" id="priceList">
         <!-- JS 動態生成區塊 -->
+    </div>
+</div>
+
+<!-- 懸浮置底計算機 -->
+<div class="calculator-card">
+    <div class="calc-header">
+        <h3>🧮 實時入油預算</h3>
+    </div>
+    <div class="calc-controls">
+        <select class="calc-select" id="calcStation" onchange="calculateTotal()"></select>
+        <input type="number" class="calc-input" id="calcLiters" placeholder="升數(L)" oninput="calculateTotal()">
+    </div>
+    <div class="quick-btns">
+        <button onclick="setLiters(5)">+ 5L</button>
+        <button onclick="setLiters(10)">+ 10L</button>
+        <button onclick="setLiters(11.2)" style="border: 1px solid var(--primary); color: var(--primary);">CMX500 入滿 (11.2L)</button>
+    </div>
+    <div class="calc-result">
+        <span>預計總開支：</span>
+        <strong id="calcTotal">$0.00</strong>
     </div>
 </div>
 
@@ -360,14 +471,14 @@
         ]
     };
 
-    // 車隊卡專屬折扣額
     const fleetCardDiscount = {
         esso: { standard: 10.00, premium: 11.00 },
-        shell: { standard: 10.70, premium: 10.70 } // 根據圖片顯示，全部汽油減 $10.7
+        shell: { standard: 10.70, premium: 10.70 } 
     };
 
     let currentTab = 'standard';
     let isLoading = false;
+    let currentSortedData = []; // 用於計算機數據聯動
 
     async function fetchData() {
         if (isLoading) return;
@@ -405,15 +516,12 @@
         let data = petrolData[type].map(item => {
             let activeBase = item.base;
             let activeDiscount = item.discount;
-            let fleetApplied = null; // 'esso' 或 'shell'
+            let fleetApplied = null;
             let isFreeUpgrade = false;
 
-            // 處理 Esso 車隊卡邏輯
             if (isEssoOn && item.id === 'esso') {
                 activeDiscount = fleetCardDiscount.esso[type];
                 fleetApplied = 'esso';
-                
-                // 特級汽油免費升級邏輯
                 if (type === 'premium') {
                     const standardEssoBase = petrolData.standard.find(p => p.id === 'esso').base;
                     activeBase = standardEssoBase; 
@@ -421,11 +529,9 @@
                 }
             }
 
-            // 處理 Shell 車隊卡邏輯
             if (isShellOn && item.id === 'shell') {
                 activeDiscount = fleetCardDiscount.shell[type];
                 fleetApplied = 'shell';
-                // 註：圖片中未提及 Shell 特級有免費升級，故按原牌價計算
             }
 
             return {
@@ -436,24 +542,18 @@
                 fleetApplied: fleetApplied,
                 isFreeUpgrade: isFreeUpgrade
             };
-        }).sort((a, b) => a.finalPrice - b.finalPrice); // 由平到貴排序
+        }).sort((a, b) => a.finalPrice - b.finalPrice); 
         
+        currentSortedData = data; // 更新全域數據供計算機使用
         const minPrice = data[0].finalPrice;
 
         data.forEach((item, index) => {
             const isFirst = item.finalPrice === minPrice;
-            
-            // 處理各種徽章 (Badges)
             let badges = [];
             if (isFirst) badges.push(`<span class="badge">👑 全場最平</span>`);
-            
-            if (item.fleetApplied === 'esso') {
-                badges.push(`<span class="badge fleet-esso">💳 Esso卡優惠</span>`);
-            } else if (item.fleetApplied === 'shell') {
-                badges.push(`<span class="badge fleet-shell">💳 Shell卡優惠</span>`);
-            }
-            
-            if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級牌價計法</span>`);
+            if (item.fleetApplied === 'esso') badges.push(`<span class="badge fleet-esso">💳 Esso卡</span>`);
+            else if (item.fleetApplied === 'shell') badges.push(`<span class="badge fleet-shell">💳 Shell卡</span>`);
+            if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級牌價</span>`);
             
             const badgeHtml = badges.length > 0 ? `<div class="badge-row">${badges.join('')}</div>` : '';
 
@@ -481,6 +581,37 @@
             `;
             listEl.appendChild(card);
         });
+
+        updateCalculatorOptions();
+    }
+
+    /* === 計算機相關邏輯 === */
+    function updateCalculatorOptions() {
+        const select = document.getElementById('calcStation');
+        select.innerHTML = '';
+        currentSortedData.forEach((item, index) => {
+            const option = document.createElement('option');
+            option.value = item.finalPrice;
+            // 第一名加上皇冠標記
+            const prefix = index === 0 ? '👑 ' : '';
+            option.innerText = `${prefix}${item.name} ($${item.finalPrice.toFixed(2)}/L)`;
+            select.appendChild(option);
+        });
+        calculateTotal(); // 更新列表後重新計算
+    }
+
+    function setLiters(val) {
+        const input = document.getElementById('calcLiters');
+        input.value = val;
+        calculateTotal();
+    }
+
+    function calculateTotal() {
+        const pricePerLiter = parseFloat(document.getElementById('calcStation').value) || 0;
+        const liters = parseFloat(document.getElementById('calcLiters').value) || 0;
+        const total = pricePerLiter * liters;
+        
+        document.getElementById('calcTotal').innerText = `$${total.toFixed(2)}`;
     }
 
     // 初始化載入
