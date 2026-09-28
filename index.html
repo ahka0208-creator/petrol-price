@@ -194,26 +194,46 @@
             gap: 6px;
             flex-grow: 1;
         }
+        
+        .station-name-row {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
         .station-name {
             font-weight: bold;
             font-size: 16px;
             color: var(--text-main);
+        }
+        .fuel-name {
+            font-size: 13px;
+            color: var(--primary);
+            font-style: italic;
+        }
+
+        .badge-row {
             display: flex;
-            align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
+
         .badge {
             background: var(--badge-bg);
             color: var(--gold);
             font-size: 10px;
-            padding: 2px 6px;
+            padding: 3px 6px;
             border-radius: 4px;
             font-weight: bold;
         }
         .badge.fleet {
             background: rgba(30, 136, 229, 0.2);
-            color: var(--primary);
+            color: #60A5FA;
+        }
+        .badge.upgrade {
+            background: rgba(239, 68, 68, 0.15);
+            color: #F87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
         }
 
         .price-breakdown {
@@ -223,7 +243,6 @@
             gap: 10px;
         }
 
-        /* 折後價主視覺區 */
         .final-price-box {
             text-align: right;
             min-width: 90px;
@@ -264,7 +283,7 @@
     <div class="fleet-card-box">
         <div class="fleet-info">
             <div class="fleet-title">💳 啟用專屬 Esso 車隊卡</div>
-            <div class="fleet-desc">Extra 減 $10 | Supreme+ 減 $11</div>
+            <div class="fleet-desc">Extra 減 $10 | Supreme+ 減 $11 (連免費升級)</div>
         </div>
         <label class="switch">
             <input type="checkbox" id="fleetToggle" onchange="renderList(currentTab)" checked>
@@ -285,25 +304,25 @@
 </div>
 
 <script>
-    // 根據消委會真實數據更新牌價與門市折扣
+    // 官方基準油價與專屬油品名稱
     const petrolData = {
         standard: [
-            { id: 'petrochina', name: '中國石油', base: 34.62, discount: 7.00, color: '#FF5722' },
-            { id: 'sinopec', name: '中石化', base: 34.62, discount: 6.00, color: '#E53935' },
-            { id: 'shell', name: '蜆殼', base: 34.62, discount: 5.00, color: '#FFEB3B' },
-            { id: 'esso', name: '埃索', base: 34.62, discount: 1.60, color: '#1E88E5' },
-            { id: 'caltex', name: '加德士', base: 34.62, discount: 0.90, color: '#00897B' }
+            { id: 'petrochina', name: '中國石油', fuelName: '清新汽油', base: 34.62, discount: 7.00, color: '#FF5722' },
+            { id: 'sinopec', name: '中石化', fuelName: '中石化汽油', base: 34.62, discount: 6.00, color: '#E53935' },
+            { id: 'shell', name: '蜆殼', fuelName: 'Shell FuelSave', base: 34.62, discount: 5.00, color: '#FFEB3B' },
+            { id: 'esso', name: '埃索', fuelName: 'Synergy Extra', base: 34.62, discount: 1.60, color: '#1E88E5' },
+            { id: 'caltex', name: '加德士', fuelName: 'Techron 黃金汽油', base: 34.62, discount: 0.90, color: '#00897B' }
         ],
         premium: [
-            { id: 'sinopec', name: '中石化', base: 36.42, discount: 7.80, color: '#E53935' },
-            { id: 'petrochina', name: '中國石油', base: 36.42, discount: 7.00, color: '#FF5722' },
-            { id: 'shell', name: '蜆殼', base: 36.42, discount: 5.00, color: '#FFEB3B' },
-            { id: 'esso', name: '埃索', base: 36.42, discount: 1.60, color: '#1E88E5' },
-            { id: 'caltex', name: '加德士', base: 36.42, discount: 0.90, color: '#00897B' }
+            { id: 'sinopec', name: '中石化', fuelName: 'Sino X Power', base: 36.42, discount: 7.80, color: '#E53935' },
+            { id: 'petrochina', name: '中國石油', fuelName: '超級清新汽油', base: 36.42, discount: 7.00, color: '#FF5722' },
+            { id: 'shell', name: '蜆殼', fuelName: 'Shell V-Power', base: 36.42, discount: 5.00, color: '#FFEB3B' },
+            { id: 'esso', name: '埃索', fuelName: 'Synergy Supreme+', base: 36.42, discount: 1.60, color: '#1E88E5' },
+            { id: 'caltex', name: '加德士', fuelName: 'Techron 白金汽油', base: 36.42, discount: 0.90, color: '#00897B' }
         ]
     };
 
-    // Esso 車隊卡折扣
+    // Esso 車隊卡專屬折扣額
     const fleetCardDiscount = {
         standard: 10.00,
         premium: 11.00
@@ -343,51 +362,65 @@
         const isFleetCardOn = document.getElementById('fleetToggle').checked;
         listEl.innerHTML = '';
         
-        // 運算最終折後價，並由平到貴排序
+        // 運算最終折後價
         let data = petrolData[type].map(item => {
+            let activeBase = item.base;
             let activeDiscount = item.discount;
             let isFleetApplied = false;
+            let isFreeUpgrade = false;
 
-            // 套用車隊卡折扣
+            // 如果開啟車隊卡，且當前油站為 Esso
             if (isFleetCardOn && item.id === 'esso') {
                 activeDiscount = fleetCardDiscount[type];
                 isFleetApplied = true;
+
+                // 核心改動：免費升級邏輯 (特級汽油，但用無鉛牌價計)
+                if (type === 'premium') {
+                    // 找出標準無鉛汽油嘅牌價 ($34.62)
+                    const standardEssoBase = petrolData.standard.find(p => p.id === 'esso').base;
+                    activeBase = standardEssoBase; 
+                    isFreeUpgrade = true;
+                }
             }
 
             return {
                 ...item,
+                activeBase: activeBase,
                 activeDiscount: activeDiscount,
-                finalPrice: item.base - activeDiscount,
-                isFleetApplied: isFleetApplied
+                finalPrice: activeBase - activeDiscount,
+                isFleetApplied: isFleetApplied,
+                isFreeUpgrade: isFreeUpgrade
             };
-        }).sort((a, b) => a.finalPrice - b.finalPrice);
+        }).sort((a, b) => a.finalPrice - b.finalPrice); // 由平到貴排序
         
         const minPrice = data[0].finalPrice;
 
         data.forEach((item, index) => {
             const isFirst = item.finalPrice === minPrice;
             
-            let badgeHtml = '';
-            if (item.isFleetApplied) {
-                badgeHtml = `<span class="badge fleet">💳 車隊卡優惠</span>`;
-            } else if (isFirst) { 
-                badgeHtml = `<span class="badge">👑 全場最平</span>`;
-            }
+            // 處理各種徽章 (Badges)
+            let badges = [];
+            if (isFirst) badges.push(`<span class="badge">👑 全場最平</span>`);
+            if (item.isFleetApplied) badges.push(`<span class="badge fleet">💳 車隊卡優惠</span>`);
+            if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級牌價計法</span>`);
+            
+            const badgeHtml = badges.length > 0 ? `<div class="badge-row">${badges.join('')}</div>` : '';
 
             const card = document.createElement('div');
             card.className = 'card';
             card.style.setProperty('--station-color', item.color);
             card.style.animationDelay = `${index * 0.1}s`;
             
-            // 介面完全改為強調「折後價」，折扣數字放細
             card.innerHTML = `
                 <div class="station-info">
-                    <div class="station-name">
-                        ${item.name} ${badgeHtml}
+                    <div class="station-name-row">
+                        <span class="station-name">${item.name}</span>
+                        <span class="fuel-name">${item.fuelName}</span>
                     </div>
+                    ${badgeHtml}
                     <div class="price-breakdown">
-                        <span>零售牌價: $${item.base.toFixed(2)}</span>
-                        <span>(折扣: -$${item.activeDiscount.toFixed(2)})</span>
+                        <span>牌價: $${item.activeBase.toFixed(2)}</span>
+                        <span>(扣減: -$${item.activeDiscount.toFixed(2)})</span>
                     </div>
                 </div>
                 <div class="final-price-box">
@@ -399,6 +432,7 @@
         });
     }
 
+    // 初始化載入
     fetchData();
 </script>
 
