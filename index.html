@@ -115,6 +115,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            padding-right: 10px;
         }
         .fleet-title {
             font-size: 14px;
@@ -122,8 +123,8 @@
             color: var(--text-main);
         }
         .fleet-desc {
-            font-size: 11px;
-            color: var(--text-muted);
+            font-size: 12px;
+            color: #60A5FA; /* 突顯每日優惠顏色 */
         }
 
         /* Toggle Switch */
@@ -132,6 +133,7 @@
             display: inline-block;
             width: 44px;
             height: 24px;
+            flex-shrink: 0;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
@@ -402,8 +404,8 @@
     <div class="fleet-panel">
         <div class="fleet-card-box esso">
             <div class="fleet-info">
-                <div class="fleet-title">💳 啟用 Esso 車隊卡</div>
-                <div class="fleet-desc">Extra 減 $10 | Supreme+ 減 $11 (連免費升級)</div>
+                <div class="fleet-title">📅 Esso 10月每日優惠 (自動匹配)</div>
+                <div class="fleet-desc" id="esso-promo-desc">載入今日優惠中...</div>
             </div>
             <label class="switch">
                 <input type="checkbox" id="essoToggle" onchange="renderList(currentTab)" checked>
@@ -413,7 +415,7 @@
         <div class="fleet-card-box shell">
             <div class="fleet-info">
                 <div class="fleet-title">💳 啟用 Shell 車隊卡</div>
-                <div class="fleet-desc">全線汽油每升即減 $10.7</div>
+                <div class="fleet-desc" style="color: var(--text-muted);">全線汽油每升即減 $10.7</div>
             </div>
             <label class="switch">
                 <input type="checkbox" id="shellToggle" onchange="renderList(currentTab)" checked>
@@ -472,13 +474,27 @@
     };
 
     const fleetCardDiscount = {
-        esso: { standard: 10.00, premium: 11.00 },
         shell: { standard: 10.70, premium: 10.70 } 
     };
 
+    // 根據 Esso 10月海報設定每日優惠陣列 (已更新星期六、日為直減實價)
+    function getTodayEssoPromo() {
+        const day = new Date().getDay(); // 0 是星期日, 6 是星期六
+        const promos = [
+            { desc: "星期日：Mastercard 直減 (Supreme+ 減$14 | Extra 減$12)", std: 12.0, prem: 14.0, upgradeBadge: false },
+            { desc: "星期一：Jetso Monday / $230 汽油折扣券", std: 7.0, prem: 7.0, upgradeBadge: false },
+            { desc: "星期二直減：Supreme+ 減$12.5 | Extra 減$11", std: 11.0, prem: 12.5, upgradeBadge: false },
+            { desc: "星期三：100 Smiles 換券 (高達減 $12.89/L)", std: 12.89, prem: 12.89, upgradeBadge: false },
+            { desc: "星期四：免費升級 + 汽油券 (高達減 $12.39/L)", std: 1.6, prem: 12.39, upgradeBadge: true },
+            { desc: "星期五直減：Supreme+ 減$12.5 | Extra 減$11", std: 11.0, prem: 12.5, upgradeBadge: false },
+            { desc: "星期六：Mastercard 直減 (Supreme+ 減$14 | Extra 減$12)", std: 12.0, prem: 14.0, upgradeBadge: false }
+        ];
+        return promos[day];
+    }
+
     let currentTab = 'standard';
     let isLoading = false;
-    let currentSortedData = []; // 用於計算機數據聯動
+    let currentSortedData = [];
 
     async function fetchData() {
         if (isLoading) return;
@@ -488,11 +504,20 @@
         btn.innerText = '⏳ 同步中...';
         btn.style.opacity = 0.7;
 
+        // 載入並顯示今日專屬的 Esso 優惠描述
+        const todayPromo = getTodayEssoPromo();
+        document.getElementById('esso-promo-desc').innerText = todayPromo.desc;
+
         setTimeout(() => {
             renderList(currentTab);
+            
+            // 更新狀態列時間與星期
             const now = new Date();
             const timeStr = now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('updateTime').innerText = `最後同步: 今日 ${timeStr}`;
+            const daysArr = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+            const dayStr = daysArr[now.getDay()];
+            
+            document.getElementById('updateTime').innerText = `最後同步: 今日 ${timeStr} (${dayStr})`;
             btn.innerText = '🔄 立即同步';
             btn.style.opacity = 1;
             isLoading = false;
@@ -512,20 +537,21 @@
         const isShellOn = document.getElementById('shellToggle').checked;
         listEl.innerHTML = '';
         
-        // 運算最終折後價
         let data = petrolData[type].map(item => {
             let activeBase = item.base;
             let activeDiscount = item.discount;
             let fleetApplied = null;
             let isFreeUpgrade = false;
 
+            // 套用 Esso 每日門市優惠邏輯
             if (isEssoOn && item.id === 'esso') {
-                activeDiscount = fleetCardDiscount.esso[type];
-                fleetApplied = 'esso';
-                if (type === 'premium') {
-                    const standardEssoBase = petrolData.standard.find(p => p.id === 'esso').base;
-                    activeBase = standardEssoBase; 
-                    isFreeUpgrade = true;
+                const todayPromo = getTodayEssoPromo();
+                activeDiscount = type === 'standard' ? todayPromo.std : todayPromo.prem;
+                fleetApplied = 'esso-retail';
+                
+                // 星期四的免費升級標籤
+                if (type === 'premium' && todayPromo.upgradeBadge) {
+                    isFreeUpgrade = true; 
                 }
             }
 
@@ -544,16 +570,18 @@
             };
         }).sort((a, b) => a.finalPrice - b.finalPrice); 
         
-        currentSortedData = data; // 更新全域數據供計算機使用
+        currentSortedData = data; 
         const minPrice = data[0].finalPrice;
 
         data.forEach((item, index) => {
             const isFirst = item.finalPrice === minPrice;
             let badges = [];
             if (isFirst) badges.push(`<span class="badge">👑 全場最平</span>`);
-            if (item.fleetApplied === 'esso') badges.push(`<span class="badge fleet-esso">💳 Esso卡</span>`);
+            
+            if (item.fleetApplied === 'esso-retail') badges.push(`<span class="badge fleet-esso">📅 今日優惠</span>`);
             else if (item.fleetApplied === 'shell') badges.push(`<span class="badge fleet-shell">💳 Shell卡</span>`);
-            if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級牌價</span>`);
+            
+            if (item.isFreeUpgrade) badges.push(`<span class="badge upgrade">🚀 免費升級 / 券</span>`);
             
             const badgeHtml = badges.length > 0 ? `<div class="badge-row">${badges.join('')}</div>` : '';
 
@@ -592,12 +620,11 @@
         currentSortedData.forEach((item, index) => {
             const option = document.createElement('option');
             option.value = item.finalPrice;
-            // 第一名加上皇冠標記
             const prefix = index === 0 ? '👑 ' : '';
             option.innerText = `${prefix}${item.name} ($${item.finalPrice.toFixed(2)}/L)`;
             select.appendChild(option);
         });
-        calculateTotal(); // 更新列表後重新計算
+        calculateTotal(); 
     }
 
     function setLiters(val) {
